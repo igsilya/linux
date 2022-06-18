@@ -726,11 +726,9 @@ void skb_release_head_state(struct sk_buff *skb)
 	skb_dst_drop(skb);
 	if (skb->destructor) {
 		WARN_ON(in_hardirq());
-		skb->destructor(skb);
+		skb_orphan(skb);
 	}
-#if IS_ENABLED(CONFIG_NF_CONNTRACK)
-	nf_conntrack_put(skb_nfct(skb));
-#endif
+	nf_reset_ct(skb);
 	skb_ext_put(skb);
 }
 
@@ -6502,7 +6500,8 @@ void skb_attempt_defer_free(struct sk_buff *skb)
 
 	if (WARN_ON_ONCE(cpu >= nr_cpu_ids) ||
 	    !cpu_online(cpu) ||
-	    cpu == raw_smp_processor_id()) {
+	    cpu == raw_smp_processor_id() ||
+	    skb_zcopy(skb)) {
 nodefer:	__kfree_skb(skb);
 		return;
 	}
@@ -6511,6 +6510,13 @@ nodefer:	__kfree_skb(skb);
 	defer_max = READ_ONCE(sysctl_skb_defer_max);
 	if (READ_ONCE(sd->defer_count) >= defer_max)
 		goto nodefer;
+
+	/* skb can contain all kinds of external references that
+	 * will prevent module unloading or destruction of other
+	 * resources.  Need to release them now, since skb can
+	 * stay on a defer list indefinitely.
+	 */
+	skb_release_head_state(skb);
 
 	spin_lock_irqsave(&sd->defer_lock, flags);
 	/* Send an IPI every time queue reaches half capacity. */
