@@ -1419,7 +1419,7 @@ int ovs_ct_copy_action(struct net *net, const struct nlattr *attr,
 		return err;
 
 	/* Set up template for tracking connections in specific zones. */
-	ct_info.ct = nf_ct_tmpl_alloc(net, &ct_info.zone, GFP_KERNEL);
+	ct_info.ct = nf_ct_tmpl_alloc(net, &ct_info.zone, GFP_KERNEL_ACCOUNT);
 	if (!ct_info.ct) {
 		OVS_NLERR(log, "Failed to allocate conntrack template");
 		return -ENOMEM;
@@ -1603,13 +1603,14 @@ static int ovs_ct_limit_init(struct net *net, struct ovs_net *ovs_net)
 	struct ovs_ct_limit_info *info;
 	int i, err;
 
-	info = kmalloc_obj(*info);
+	info = kmalloc_obj(*info, GFP_KERNEL_ACCOUNT);
 	if (!info)
 		return -ENOMEM;
 
 	info->default_limit = OVS_CT_LIMIT_DEFAULT;
 	info->limits =
-		kmalloc_objs(struct hlist_head, CT_LIMIT_HASH_BUCKETS);
+		kmalloc_objs(struct hlist_head, CT_LIMIT_HASH_BUCKETS,
+			     GFP_KERNEL_ACCOUNT);
 	if (!info->limits) {
 		kfree(info);
 		return -ENOMEM;
