@@ -16,6 +16,8 @@
 #include <linux/in.h>
 #include <linux/rcupdate.h>
 #include <linux/cpumask.h>
+#include <linux/memcontrol.h>
+#include <linux/sched/mm.h>
 #include <linux/if_arp.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
@@ -41,6 +43,32 @@
 #include "flow.h"
 #include "flow_netlink.h"
 #include "vport.h"
+
+static struct mem_cgroup *flow_memcg_enter(struct sw_flow *flow,
+					   struct mem_cgroup **old_memcg)
+{
+#ifdef CONFIG_MEMCG
+	struct mem_cgroup *memcg;
+
+	memcg = flow->objcg ? get_mem_cgroup_from_objcg(flow->objcg) : NULL;
+	*old_memcg = set_active_memcg(memcg);
+
+	return memcg;
+#else
+	*old_memcg = NULL;
+	return NULL;
+#endif
+}
+
+static void flow_memcg_exit(struct mem_cgroup *memcg,
+			    struct mem_cgroup *old_memcg)
+{
+#ifdef CONFIG_MEMCG
+	set_active_memcg(old_memcg);
+	if (memcg)
+		mem_cgroup_put(memcg);
+#endif
+}
 
 u64 ovs_flow_used_time(unsigned long flow_jiffies)
 {
@@ -89,7 +117,12 @@ void ovs_flow_stats_update(struct sw_flow *flow, __be16 tcp_flags,
 			    likely(!rcu_access_pointer(flow->stats[cpu]))) {
 				/* Try to allocate CPU-specific stats. */
 				struct sw_flow_stats *new_stats;
+				struct mem_cgroup *memcg, *old_memcg;
 
+				/* Charge the allocation to the memcg of the
+				 * task that installed the flow.
+				 */
+				memcg = flow_memcg_enter(flow, &old_memcg);
 				new_stats =
 					kmem_cache_alloc_node(flow_stats_cache,
 							      GFP_NOWAIT |
@@ -97,6 +130,7 @@ void ovs_flow_stats_update(struct sw_flow *flow, __be16 tcp_flags,
 							      __GFP_NOWARN |
 							      __GFP_NOMEMALLOC,
 							      numa_node_id());
+				flow_memcg_exit(memcg, old_memcg);
 				if (likely(new_stats)) {
 					new_stats->used = jiffies;
 					new_stats->packet_count = 1;

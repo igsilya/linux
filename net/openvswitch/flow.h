@@ -18,6 +18,7 @@
 #include <linux/jiffies.h>
 #include <linux/time.h>
 #include <linux/cpumask.h>
+#include <linux/memcontrol.h>
 #include <net/inet_ecn.h>
 #include <net/ip_tunnels.h>
 #include <net/dst_metadata.h>
@@ -232,6 +233,10 @@ struct sw_flow {
 	struct cpumask *cpu_used_mask;
 	struct sw_flow_mask *mask;
 	struct sw_flow_actions __rcu *sf_acts;
+#ifdef CONFIG_MEMCG
+	struct obj_cgroup *objcg;	/* Owner for stats memcg accounting.
+					 * Can be NULL (e.g., root memcg). */
+#endif
 	struct sw_flow_stats __rcu *stats[]; /* One for each CPU.  First one
 					   * is allocated at flow creation time,
 					   * the rest are allocated on demand

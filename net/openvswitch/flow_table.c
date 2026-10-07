@@ -79,6 +79,13 @@ struct sw_flow *ovs_flow_alloc(void)
 	flow->stats_last_writer = -1;
 	flow->cpu_used_mask = (struct cpumask *)&flow->stats[nr_cpu_ids];
 
+#ifdef CONFIG_MEMCG
+	/* Remember the owner, so we know which memcg to charge for the future
+	 * on-demand per-CPU stats allocations happening in softirq context.
+	 */
+	flow->objcg = get_obj_cgroup_from_current();
+#endif
+
 	/* Initialize the default stat node. */
 	stats = kmem_cache_alloc_node(flow_stats_cache,
 				      GFP_KERNEL | __GFP_ZERO,
@@ -94,6 +101,10 @@ struct sw_flow *ovs_flow_alloc(void)
 
 	return flow;
 err:
+#ifdef CONFIG_MEMCG
+	if (flow->objcg)
+		obj_cgroup_put(flow->objcg);
+#endif
 	kmem_cache_free(flow_cache, flow);
 	return ERR_PTR(-ENOMEM);
 }
@@ -118,6 +129,11 @@ static void flow_free(struct sw_flow *flow)
 			kmem_cache_free(flow_stats_cache,
 					(struct sw_flow_stats __force *)flow->stats[cpu]);
 	}
+
+#ifdef CONFIG_MEMCG
+	if (flow->objcg)
+		obj_cgroup_put(flow->objcg);
+#endif
 
 	kmem_cache_free(flow_cache, flow);
 }
@@ -1202,7 +1218,7 @@ int ovs_flow_init(void)
 
 	flow_stats_cache
 		= kmem_cache_create("sw_flow_stats", sizeof(struct sw_flow_stats),
-				    0, SLAB_HWCACHE_ALIGN, NULL);
+				    0, SLAB_HWCACHE_ALIGN | SLAB_ACCOUNT, NULL);
 	if (flow_stats_cache == NULL) {
 		kmem_cache_destroy(flow_cache);
 		flow_cache = NULL;
