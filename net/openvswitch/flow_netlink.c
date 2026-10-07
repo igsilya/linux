@@ -1888,7 +1888,7 @@ int ovs_nla_get_identifier(struct sw_flow_id *sfid, const struct nlattr *ufid,
 		return 0;
 
 	/* If UFID was not provided, use unmasked key. */
-	new_key = kmalloc_obj(*new_key);
+	new_key = kmalloc_obj(*new_key, GFP_KERNEL_ACCOUNT);
 	if (!new_key)
 		return -ENOMEM;
 	memcpy(new_key, key, sizeof(*key));
@@ -2282,7 +2282,8 @@ static struct sw_flow_actions *nla_alloc_flow_actions(int size)
 {
 	struct sw_flow_actions *sfa;
 
-	sfa = kmalloc(kmalloc_size_roundup(sizeof(*sfa) + size), GFP_KERNEL);
+	sfa = kmalloc(kmalloc_size_roundup(sizeof(*sfa) + size),
+		      GFP_KERNEL_ACCOUNT);
 	if (!sfa)
 		return ERR_PTR(-ENOMEM);
 
@@ -2835,14 +2836,14 @@ static int validate_and_copy_set_tun(const struct nlattr *attr,
 		return start;
 
 	tun_dst = metadata_dst_alloc(key.tun_opts_len, METADATA_IP_TUNNEL,
-				     GFP_KERNEL);
+				     GFP_KERNEL_ACCOUNT);
 
 	if (!tun_dst) {
 		err = -ENOMEM;
 		goto err;
 	}
 
-	err = dst_cache_init(&tun_dst->u.tun_info.dst_cache, GFP_KERNEL);
+	err = dst_cache_init(&tun_dst->u.tun_info.dst_cache, GFP_KERNEL_ACCOUNT);
 	if (err)
 		goto err_free_tun_dst;
 

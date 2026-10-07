@@ -1196,7 +1196,7 @@ int ovs_flow_init(void)
 				       + (nr_cpu_ids
 					  * sizeof(struct sw_flow_stats *))
 				       + cpumask_size(),
-				       0, 0, NULL);
+				       0, SLAB_ACCOUNT, NULL);
 	if (flow_cache == NULL)
 		return -ENOMEM;
 
