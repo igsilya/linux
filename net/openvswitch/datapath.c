@@ -1722,7 +1722,7 @@ static int ovs_dp_set_upcall_portids(struct datapath *dp,
 	old = ovsl_dereference(dp->upcall_portids);
 
 	dp_nlsk_pids = kmalloc(sizeof(*dp_nlsk_pids) + nla_len(ids),
-			       GFP_KERNEL);
+			       GFP_KERNEL_ACCOUNT);
 	if (!dp_nlsk_pids)
 		return -ENOMEM;
 
@@ -1827,7 +1827,8 @@ static int ovs_dp_vport_init(struct datapath *dp)
 {
 	int i;
 
-	dp->ports = kmalloc_objs(struct hlist_head, DP_VPORT_HASH_BUCKETS);
+	dp->ports = kmalloc_objs(struct hlist_head, DP_VPORT_HASH_BUCKETS,
+				 GFP_KERNEL_ACCOUNT);
 	if (!dp->ports)
 		return -ENOMEM;
 
@@ -1856,7 +1857,7 @@ static int ovs_dp_cmd_new(struct sk_buff *skb, struct genl_info *info)
 		return -ENOMEM;
 
 	err = -ENOMEM;
-	dp = kzalloc_obj(*dp);
+	dp = kzalloc_obj(*dp, GFP_KERNEL_ACCOUNT);
 	if (dp == NULL)
 		goto err_destroy_reply;
 

@@ -129,7 +129,7 @@ struct vport *ovs_vport_alloc(int priv_size, const struct vport_ops *ops,
 		alloc_size += priv_size;
 	}
 
-	vport = kzalloc(alloc_size, GFP_KERNEL);
+	vport = kzalloc(alloc_size, GFP_KERNEL_ACCOUNT);
 	if (!vport)
 		return ERR_PTR(-ENOMEM);
 
@@ -337,7 +337,7 @@ int ovs_vport_set_upcall_portids(struct vport *vport, const struct nlattr *ids)
 	old = ovsl_dereference(vport->upcall_portids);
 
 	vport_portids = kmalloc(sizeof(*vport_portids) + nla_len(ids),
-				GFP_KERNEL);
+				GFP_KERNEL_ACCOUNT);
 	if (!vport_portids)
 		return -ENOMEM;
 
