@@ -148,13 +148,14 @@ static void __table_instance_destroy(struct table_instance *ti)
 
 static struct table_instance *table_instance_alloc(int new_size)
 {
-	struct table_instance *ti = kmalloc_obj(*ti);
+	struct table_instance *ti = kmalloc_obj(*ti, GFP_KERNEL_ACCOUNT);
 	int i;
 
 	if (!ti)
 		return NULL;
 
-	ti->buckets = kvmalloc_objs(struct hlist_head, new_size);
+	ti->buckets = kvmalloc_objs(struct hlist_head, new_size,
+				    GFP_KERNEL_ACCOUNT);
 	if (!ti->buckets) {
 		kfree(ti);
 		return NULL;
@@ -217,16 +218,17 @@ static struct mask_array *tbl_mask_array_alloc(int size)
 
 	size = max(MASK_ARRAY_SIZE_MIN, size);
 	new = kzalloc(struct_size(new, masks, size) +
-		      sizeof(u64) * size, GFP_KERNEL);
+		      sizeof(u64) * size, GFP_KERNEL_ACCOUNT);
 	if (!new)
 		return NULL;
 
 	new->masks_usage_zero_cntr = (u64 *)((u8 *)new +
 					     struct_size(new, masks, size));
 
-	new->masks_usage_stats = __alloc_percpu(sizeof(struct mask_array_stats) +
-						sizeof(u64) * size,
-						__alignof__(u64));
+	new->masks_usage_stats = __alloc_percpu_gfp(sizeof(struct mask_array_stats) +
+						    sizeof(u64) * size,
+						    __alignof__(u64),
+						    GFP_KERNEL_ACCOUNT);
 	if (!new->masks_usage_stats) {
 		kfree(new);
 		return NULL;
@@ -366,15 +368,16 @@ static struct mask_cache *tbl_mask_cache_alloc(u32 size)
 	    (size * sizeof(struct mask_cache_entry)) > PCPU_MIN_UNIT_SIZE)
 		return NULL;
 
-	new = kzalloc_obj(*new);
+	new = kzalloc_obj(*new, GFP_KERNEL_ACCOUNT);
 	if (!new)
 		return NULL;
 
 	new->cache_size = size;
 	if (new->cache_size > 0) {
-		cache = __alloc_percpu(array_size(sizeof(struct mask_cache_entry),
-						  new->cache_size),
-				       __alignof__(struct mask_cache_entry));
+		cache = __alloc_percpu_gfp(array_size(sizeof(struct mask_cache_entry),
+						      new->cache_size),
+					   __alignof__(struct mask_cache_entry),
+					   GFP_KERNEL_ACCOUNT);
 		if (!cache) {
 			kfree(new);
 			return NULL;
@@ -964,7 +967,7 @@ static struct sw_flow_mask *mask_alloc(void)
 {
 	struct sw_flow_mask *mask;
 
-	mask = kmalloc_obj(*mask);
+	mask = kmalloc_obj(*mask, GFP_KERNEL_ACCOUNT);
 	if (mask)
 		mask->ref_count = 1;
 
