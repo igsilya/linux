@@ -69,7 +69,7 @@ static struct dp_meter_instance *dp_meter_instance_alloc(const u32 size)
 {
 	struct dp_meter_instance *ti;
 
-	ti = kvzalloc_flex(*ti, dp_meters, size);
+	ti = kvzalloc_flex(*ti, dp_meters, size, GFP_KERNEL_ACCOUNT);
 	if (!ti)
 		return NULL;
 
