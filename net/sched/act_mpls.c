@@ -57,6 +57,7 @@ TC_INDIRECT_SCOPE int tcf_mpls_act(struct sk_buff *skb,
 	struct tcf_mpls *m = to_mpls(a);
 	struct tcf_mpls_params *p;
 	__be32 new_lse;
+	bool was_mpls;
 	int mac_len;
 
 	tcf_lastuse_update(&m->tcf_tm);
@@ -76,8 +77,11 @@ TC_INDIRECT_SCOPE int tcf_mpls_act(struct sk_buff *skb,
 
 	switch (p->tcfm_action) {
 	case TCA_MPLS_ACT_POP:
+		was_mpls = eth_p_mpls(skb->protocol);
 		if (skb_mpls_pop(skb, p->tcfm_proto, mac_len,
 				 skb->dev && skb->dev->type == ARPHRD_ETHER))
+			goto drop;
+		if (was_mpls && unlikely(skb_headlen(skb) < ETH_HLEN))
 			goto drop;
 		break;
 	case TCA_MPLS_ACT_PUSH:
