@@ -1197,7 +1197,7 @@ static void tun_set_headroom(struct net_device *dev, int new_hr)
 	if ((tun->flags & TUN_TYPE_MASK) == IFF_TAP)
 		max_headroom -= ETH_HLEN + NET_IP_ALIGN;
 	else
-		max_headroom -= 1;
+		max_headroom -= ETH_HLEN;
 
 	tun->align = clamp_t(int, new_hr, NET_SKB_PAD, max_headroom);
 }
@@ -1834,6 +1834,11 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
 		align += NET_IP_ALIGN;
 		if (unlikely(len < ETH_HLEN || (hdr_len && hdr_len < ETH_HLEN)))
 			return -EINVAL;
+	} else {
+		if (unlikely(len < ETH_HLEN))
+			return -EINVAL;
+		if (hdr_len)
+			hdr_len = max_t(int, hdr_len, ETH_HLEN);
 	}
 
 	good_linear = SKB_MAX_HEAD(align);
